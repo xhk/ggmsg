@@ -63,6 +63,10 @@ public:
 		{
 			std::lock_guard<std::mutex> lk(Channels_lock_);
 			Channels_.erase(ip_port.str());
+			if (m_services.find(s->GetServiceID())!=m_services.end())
+			{
+				m_services.erase(s->GetServiceID());
+			}
 		}
 	}
 

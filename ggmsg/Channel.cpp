@@ -104,6 +104,7 @@ void Channel::OnRecvShakeHandReq(const void *pPacket, int nLength)
 	pRspHead->nMsgType = pReqHead->nMsgType;
 	auto pRsp = (ShakeHandRsp*)(buf + pRspHead->nHeadSize);
 	pRsp->nServiceID = m_pChannelMgr->GetServiceID();
+	m_pChannelMgr->AddService(shared_from_this());
 
 	write(buf, nPackageLen);
 }
