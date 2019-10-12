@@ -9,3 +9,4 @@
 
 ggmsg 采用两端直连模式，类似于nanomsg，没有broker，性能更优，没有中间商赚差价，你懂的。严格上来讲不算是“中间”件。
 
+![3个对等节点示意图](https://github.com/xhk/ggmsg/blob/master/doc/node_3.png?raw=true)
