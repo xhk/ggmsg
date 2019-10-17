@@ -58,7 +58,7 @@ public:
 
 	void write(char *data, std::size_t length);
 
-	std::wstring RemoteIp() {
+	std::string RemoteIp() {
 		return m_strRemoteIp;
 	}
 	std::string remote_ip() { return socket_.remote_endpoint().address().to_string(); }
@@ -78,7 +78,6 @@ public:
 private:
 	void DoReadHead();
 	void DoReadBody(const NetHead & head);
-	void do_read();
 	void do_write();
 
 	void do_close();
@@ -111,7 +110,7 @@ private:
 		std::size_t nLen;
 	};
 
-	std::wstring m_strRemoteIp;
+	std::string m_strRemoteIp;
 	unsigned short m_uRemotePort;
 	std::queue<DataEle> m_dataQueue;
 	bool m_bSending;

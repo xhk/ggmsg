@@ -16,16 +16,19 @@ Channel::~Channel()
 
 void Channel::do_close()
 {
-	
-
 	m_pChannelMgr->earse(shared_from_this());
 	socket_.shutdown(tcp::socket::shutdown_both);
 	socket_.close();
+
+	if (m_channalType == ChannalType::positive) {
+		m_pChannelMgr->Connect(m_strRemoteIp, m_uRemotePort);
+	}
 }
 
 void Channel::Start()
 {
 	m_uRemotePort = socket_.remote_endpoint().port();
+	m_strRemoteIp = socket_.remote_endpoint().address().to_string();
 	DoReadHead();
 
 	
@@ -139,34 +142,6 @@ void Channel::DoReadBody(const NetHead & head)
 			auto pNetHead = (NetHead*)data_;
 			OnReceivePacket(data_, pNetHead->nHeadSize + pNetHead->nBodySize);
 			DoReadHead();
-		}
-	});
-}
-
-void Channel::do_read()
-{
-	auto self(shared_from_this());
-	socket_.async_read_some(boost::asio::buffer(data_, max_length),
-		[this, self](boost::system::error_code ec, std::size_t length)
-	{
-		if (!ec)
-		{
-			m_nRecvTimes++;
-			m_nRecvBytes += length;
-			/*try {
-				OnRecvBinarayData(data_, length);
-			}
-			catch (...) {
-				TRACE("packet exception\n");
-				do_close();
-				return;
-			}*/
-
-			do_read();
-		}
-		else
-		{
-			do_close();
 		}
 	});
 }
