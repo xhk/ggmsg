@@ -15,3 +15,4 @@
 
 // 在此处引用程序需要的其他标头
 #define __NET_MSG_LIB__
+#define __GGMSG_LIB__

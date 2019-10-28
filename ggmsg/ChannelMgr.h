@@ -14,6 +14,8 @@
 #include "Channel.h"
 #include <functional>
 
+#include "ggmsg.h"
+
 using boost::asio::ip::tcp;
 
 #ifdef __NET_MSG_LIB__
@@ -31,7 +33,7 @@ public:
 	ChannelMgr()
 		:acceptor_(nullptr)
 	{
-		
+		m_nServiceID = -1;
 	}
 
 	~ChannelMgr() {
@@ -41,58 +43,55 @@ public:
 	}
 
 	// 向指定服务发送数据
-	bool Send(int nServiceID, const void *pData, int nDataLen);
-	bool SendToAll(const void *pData, int nDataLen);
+	bool SendToService(int nServiceID, const void *pData, int nDataLen);
 
-	using DataHandler = std::function<void(int nServiceID, const void *pPacket, int nLength)>;
-	void Start(int nServiceID, short port, DataHandler);
+	// 向所有服务发送数据
+	bool SendToAllService(const void *pData, int nDataLen);
+
+	// 向指定连接发送数据
+	bool SendToConnect(int nConnectID, const void *pData, int nDataLen);
+	
+	void Start(int nServiceID, short port, 
+		FnOnPassiveConnect fnOnPassiveConnect,
+		FnOnReceiveMsg fnOnReceiveMsg);
 	void Stop();
 
-	//bool Connect(int nServiceID);
-	bool Connect(const std::string & strHost, short sPort);
-
-
+	// 主动发起连接
+	bool Connect(const std::string & strHost, short sPort,
+		FnOnPositiveConnect fnOnPositiveConnect,
+		FnOnReceiveMsg fnOnReceiveMsg);
 
 	typedef std::vector<std::shared_ptr<Channel> > ChannelList;
-	void GetChannelList(std::vector<std::shared_ptr<Channel> > &Channel_list);
-
-	// 移除会话
-	void earse(std::shared_ptr<Channel> s ){
-		std::stringstream ip_port;
-		ip_port << s->remote_ip() << ":" << s->remote_port();
-		{
-			std::lock_guard<std::mutex> lk(Channels_lock_);
-			Channels_.erase(ip_port.str());
-			if (m_services.find(s->GetServiceID())!=m_services.end())
-			{
-				m_services.erase(s->GetServiceID());
-			}
-		}
-	}
+	void GetChannelList(ChannelList &Channel_list);
 
 	int GetServiceID() {
 		return m_nServiceID;
 	}
 
-	void AddService(std::shared_ptr<Channel> s) {
-		std::lock_guard<std::mutex> lk(Channels_lock_);
-		m_services.insert({ s->GetServiceID(), s });
-	}
+	void AddService(std::shared_ptr<Channel> s);
+
+	// 移除会话
+	void DeleteService(std::shared_ptr<Channel> s);
 
 private:
 	void do_accept();
+	bool InternalConnect(const std::string & strHost, short sPort);
 	void DoConnect(tcp::socket *pConnectSocket, tcp::resolver::results_type *pEndPoint, time_t_timer *pTimer);
 	
+	void StartIoThread();
+
 	int m_nServiceID;
 	boost::asio::io_context m_ioContext;
 	tcp::acceptor *acceptor_;
 	std::mutex Channels_lock_;
-	std::unordered_map<std::string, std::shared_ptr<Channel> > Channels_;
+	std::unordered_map<int, std::shared_ptr<Channel> > Channels_;
 	bool working_;
 	std::thread io_thread_;
 
 	std::unordered_map<int, std::shared_ptr<Channel> > m_services;
-	DataHandler m_handler;
+	FnOnPositiveConnect m_fnOnPositiveConnect;
+	FnOnPassiveConnect m_fnOnPassiveConnect;
+	FnOnReceiveMsg m_fnOnReceiveMsg;
 
 
 	friend Channel;

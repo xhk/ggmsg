@@ -7,33 +7,51 @@
 #include <tchar.h>
 #include <thread>
 
+int OnPositiveConnect(int nServiceID, int nConnectID)
+{
+	std::cout << "OnPositiveConnect " << nServiceID << " " << nConnectID <<"\n";
+	return 0;
+}
+
+// 被动连接通知
+// nSeviceID 发起连接的服务ID
+int OnPassiveConnect(int nSeviceID, int nConnectID)
+{
+	std::cout << "OnPassiveConnect " << nSeviceID << " " << nConnectID << "\n";
+	return 0;
+}
+
+int OnReceiveMsg(int nServiceID, int nConnectID, const void *pMsg, int nMsgLen)
+{
+	std::cout << "from Service:" << nServiceID << " ConnectID:" << nConnectID << ", msg content:" << (char*)pMsg << "\n";
+	return 0;
+}
+
 int main(int argc, TCHAR *argv[])
 {
 	int nServiceID = _ttoi(argv[1]);
 	short sPort = _ttoi(argv[2]);
     std::cout << "Hello World!\n"; 
-	ChannelMgr server;
-	server.Start(nServiceID, sPort, [](int nServiceID, const void *pPacket, int nLength) {
-		std::cout << "from Service:" << nServiceID << ", msg content:" << (char*)pPacket << "\n";
-	});
+	ChannelMgr node;
+	node.Start(nServiceID, sPort, OnPassiveConnect, OnReceiveMsg);
 
 	if (argc > 3) {
 		std::string host = argv[3];
 		short port = _ttoi(argv[4]);
 		
-		server.Connect(host, port);
+		node.Connect(host, port, OnPositiveConnect);
 		char buf[32] = { 0 };
 		getchar();
 		for (int i=0;i<1000;++i)
 		{
 			std::this_thread::sleep_for(std::chrono::seconds(1));
 			sprintf_s(buf, "msg %d", i + 1);
-			server.SendToAll(buf, strlen(buf) + 1);
+			node.SendToAllService(buf, strlen(buf) + 1);
 		}
 	}
 
 	getchar();
-	server.Stop();
+	node.Stop();
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单

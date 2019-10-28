@@ -11,6 +11,7 @@
 #include <string>
 #include <queue>
 #include <ctime>
+#include <atomic>
 #include "Timer.h"
 #include "define.h"
 
@@ -40,14 +41,19 @@ public:
 		m_bSending = false;
 		
 		m_channalType = (ChannalType)nChannalType;
+		m_nConnectID = ++m_nConnectIDSerial;
 	}
 	
 	~Channel();
 
 	int GetServiceID() { return m_nServiceID; }
+	int GetConnectID() { return m_nConnectID; }
 
 	void Start();
 
+	bool IsMe(const std::string & strHost, short sPort) {
+		return m_strRemoteIp == strHost && m_uRemotePort == sPort;
+	}
 	
 
 	// 向其他请求握手
@@ -76,6 +82,8 @@ public:
 	};
 
 private:
+
+
 	void DoReadHead();
 	void DoReadBody(const NetHead & head);
 	void do_write();
@@ -116,6 +124,9 @@ private:
 	bool m_bSending;
 
 	int m_nServiceID;
+	int m_nConnectID;
+	static std::atomic_uint m_nConnectIDSerial;
+
 	ChannalType m_channalType;
 
 	time_t_timer m_timerHeartBeat; // 心跳包定时器

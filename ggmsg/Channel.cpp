@@ -8,6 +8,8 @@
 #include <utility>
 #include <boost/asio.hpp>
 
+std::atomic_uint Channel::m_nConnectIDSerial = 0;
+
 Channel::~Channel()
 {
 	
@@ -16,12 +18,12 @@ Channel::~Channel()
 
 void Channel::do_close()
 {
-	m_pChannelMgr->earse(shared_from_this());
+	m_pChannelMgr->DeleteService(shared_from_this());
 	socket_.shutdown(tcp::socket::shutdown_both);
 	socket_.close();
 
 	if (m_channalType == ChannalType::positive) {
-		m_pChannelMgr->Connect(m_strRemoteIp, m_uRemotePort);
+		m_pChannelMgr->InternalConnect(m_strRemoteIp, m_uRemotePort);
 	}
 }
 
@@ -91,6 +93,10 @@ void Channel::OnRecvShakeHandRsp(const void *pPacket, int nLength)
 	}
 
 	m_pChannelMgr->AddService(shared_from_this());
+
+	if (m_pChannelMgr->m_fnOnPositiveConnect) {
+		m_pChannelMgr->m_fnOnPositiveConnect(m_nServiceID, m_nConnectID);
+	}
 }
 
 void Channel::OnRecvShakeHandReq(const void *pPacket, int nLength)
@@ -110,6 +116,10 @@ void Channel::OnRecvShakeHandReq(const void *pPacket, int nLength)
 	m_pChannelMgr->AddService(shared_from_this());
 
 	write(buf, nPackageLen);
+
+	if (m_pChannelMgr->m_fnOnPassiveConnect) {
+		m_pChannelMgr->m_fnOnPassiveConnect(m_pChannelMgr->GetServiceID(), m_nConnectID);
+	}
 }
 
 void Channel::DoReadHead() 
@@ -228,8 +238,8 @@ void Channel::OnReceivePacket(const void *pPacket, int nLength)
 	}
 	break;
 	case ggmtMsg: {
-		if (m_pChannelMgr->m_handler) {
-			m_pChannelMgr->m_handler(m_nServiceID, (char *)pPacket + pHead->nHeadSize, pHead->nBodySize);
+		if (m_pChannelMgr->m_fnOnReceiveMsg) {
+			m_pChannelMgr->m_fnOnReceiveMsg(m_nServiceID, m_nConnectID, (char *)pPacket + pHead->nHeadSize, pHead->nBodySize);
 		}
 	}break;
 	default:
