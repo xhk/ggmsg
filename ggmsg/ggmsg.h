@@ -7,6 +7,12 @@
 
 #endif // __NET_MSG_LIB__
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+
+
 // 主动连接的结果通知
 typedef int(*FnOnPositiveConnect)(int nServiceID, int nConnectID);
 
@@ -25,7 +31,7 @@ void __ggmsg_interface__ ggmsg_Start(__int64 c, int nServiceID, short port,
 	FnOnReceiveMsg fnOnReceiveMsg);
 
 // 主动发起连接
-int __ggmsg_interface__ ggmsg_Connect(__int64 c, const std::string & strHost, short sPort,
+int __ggmsg_interface__ ggmsg_Connect(__int64 c, const char *szHost, short sPort,
 	FnOnPositiveConnect fnOnPositiveConnect,
 	FnOnReceiveMsg fnOnReceiveMsg);
 
@@ -38,3 +44,6 @@ int __ggmsg_interface__ ggmsg_SendToService(__int64 c, int nServiceID, const voi
 // 向指定连接发送数据
 int __ggmsg_interface__ ggmsg_SendToConnect(__int64 c, int nConnectID, const void *pData, int nDataLen);
 
+#ifdef __cplusplus
+}
+#endif // __cplusplus

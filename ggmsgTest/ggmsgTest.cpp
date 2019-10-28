@@ -39,7 +39,7 @@ int main(int argc, TCHAR *argv[])
 		std::string host = argv[3];
 		short port = _ttoi(argv[4]);
 		
-		node.Connect(host, port, OnPositiveConnect);
+		node.Connect(host, port, OnPositiveConnect, OnReceiveMsg);
 		char buf[32] = { 0 };
 		getchar();
 		for (int i=0;i<1000;++i)

@@ -5,6 +5,11 @@
 
 #include "ChannelMgr.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+
 __int64 ggmsg_Create()
 {
 	return (__int64) new ChannelMgr();
@@ -32,7 +37,7 @@ void ggmsg_Start(__int64 c, int nServiceID, short port,
 // 主动发起连接
 int ggmsg_Connect(
 	__int64 c,
-	const std::string & strHost, short sPort,
+	const char *szHost, short sPort,
 	FnOnPositiveConnect fnOnPositiveConnect,
 	FnOnReceiveMsg fnOnReceiveMsg)
 {
@@ -41,7 +46,7 @@ int ggmsg_Connect(
 		return -1;
 	}
 
-	if (!pMgr->Connect(strHost, sPort, fnOnPositiveConnect, fnOnReceiveMsg)) {
+	if (!pMgr->Connect(szHost, sPort, fnOnPositiveConnect, fnOnReceiveMsg)) {
 		return -1;
 	}
 
@@ -87,3 +92,8 @@ int ggmsg_SendToConnect(__int64 c, int nConnectID, const void *pData, int nDataL
 
 	return 0;
 }
+
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus

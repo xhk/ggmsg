@@ -1,0 +1,6 @@
+D:\github.com\ggmsg\nggmsg\bin\Debug\nggmsg.dll
+D:\github.com\ggmsg\nggmsg\bin\Debug\nggmsg.pdb
+D:\github.com\ggmsg\nggmsg\obj\Debug\nggmsg.csprojAssemblyReference.cache
+D:\github.com\ggmsg\nggmsg\obj\Debug\nggmsg.csproj.CoreCompileInputs.cache
+D:\github.com\ggmsg\nggmsg\obj\Debug\nggmsg.dll
+D:\github.com\ggmsg\nggmsg\obj\Debug\nggmsg.pdb
