@@ -13,31 +13,29 @@ namespace nggmsgTest
 	{
 		static void Main(string[] args)
 		{
-			if(args[0] == "server")
+			Channel c = new Channel();
+			int nServiceID = 10;
+			short port = 9010;
+			if (args[0] == "server")
 			{
-				Channel c = new Channel();
-				c.Start(11, 9100, OnPassiveConnect, OnServerReceiveMsg);
-				for (int i = 0; i < 100; ++i)
-				{
-					
-				}
-				Console.ReadKey();
-				c.Stop();
+				Console.WriteLine("Server Start");
+				c.Start(nServiceID, port, OnPassiveConnect, OnServerReceiveMsg);
+				
 			}
 			else
 			{
-				Channel client = new Channel();
-				client.Connect("127.0.0.1", 9100, OnPositiveConnect, OnClientReceiveMsg);
+				Console.WriteLine("Client Start");
+				c.Connect("127.0.0.1", port, OnPositiveConnect, OnClientReceiveMsg);
 				var msg = "hello server";
 				for (int i = 0; i < 100; ++i)
 				{
 					Thread.Sleep(2000);
-					client.SendToService(11, Encoding.ASCII.GetBytes(msg));
+					c.SendToService(nServiceID, Encoding.ASCII.GetBytes(msg));
 				}
-				client.Stop();
 			}
 
-
+			Console.ReadKey();
+			c.Stop();
 		}
 
 		public static void OnPositiveConnect(int nServiceID, int nConnectID) {

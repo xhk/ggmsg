@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nggmsg", "nggmsg\nggmsg.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nggmsgTest", "nggmsgTest\nggmsgTest.csproj", "{2ECFFA6C-A563-4E44-9964-2200E337D8FE}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ServerClientTest", "ServerClientTest\ServerClientTest.vcxproj", "{1A0941EC-7F7F-47EE-B1DA-E6E642BF0A07}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -68,6 +70,16 @@ Global
 		{2ECFFA6C-A563-4E44-9964-2200E337D8FE}.Release|x64.Build.0 = Release|Any CPU
 		{2ECFFA6C-A563-4E44-9964-2200E337D8FE}.Release|x86.ActiveCfg = Release|Any CPU
 		{2ECFFA6C-A563-4E44-9964-2200E337D8FE}.Release|x86.Build.0 = Release|Any CPU
+		{1A0941EC-7F7F-47EE-B1DA-E6E642BF0A07}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{1A0941EC-7F7F-47EE-B1DA-E6E642BF0A07}.Debug|x64.ActiveCfg = Debug|x64
+		{1A0941EC-7F7F-47EE-B1DA-E6E642BF0A07}.Debug|x64.Build.0 = Debug|x64
+		{1A0941EC-7F7F-47EE-B1DA-E6E642BF0A07}.Debug|x86.ActiveCfg = Debug|Win32
+		{1A0941EC-7F7F-47EE-B1DA-E6E642BF0A07}.Debug|x86.Build.0 = Debug|Win32
+		{1A0941EC-7F7F-47EE-B1DA-E6E642BF0A07}.Release|Any CPU.ActiveCfg = Release|Win32
+		{1A0941EC-7F7F-47EE-B1DA-E6E642BF0A07}.Release|x64.ActiveCfg = Release|x64
+		{1A0941EC-7F7F-47EE-B1DA-E6E642BF0A07}.Release|x64.Build.0 = Release|x64
+		{1A0941EC-7F7F-47EE-B1DA-E6E642BF0A07}.Release|x86.ActiveCfg = Release|Win32
+		{1A0941EC-7F7F-47EE-B1DA-E6E642BF0A07}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -145,8 +145,6 @@ bool ChannelMgr::Connect(const std::string & strHost, short sPort,
 
 bool ChannelMgr::InternalConnect(const std::string & strHost, short sPort)
 {
-	
-
 	tcp::resolver resolver(m_ioContext);
 	auto endpoints = resolver.resolve(strHost, std::to_string(sPort));
 	auto pConnectSocket = new tcp::socket(m_ioContext);
@@ -154,6 +152,7 @@ bool ChannelMgr::InternalConnect(const std::string & strHost, short sPort)
 	*pEndPoint = endpoints;
 	auto pTimer = new time_t_timer(m_ioContext);
 
+	working_ = true;
 	DoConnect(pConnectSocket, pEndPoint, pTimer);
 
 	if (!io_thread_.native_handle()) {
