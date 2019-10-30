@@ -125,6 +125,9 @@ private:
 
 	int m_nServiceID;
 	int m_nConnectID;
+	char m_chSelfEncryptKey[32];
+	char m_chPeerEncryptKey[32];
+
 	static std::atomic_uint m_nConnectIDSerial;
 
 	ChannalType m_channalType;

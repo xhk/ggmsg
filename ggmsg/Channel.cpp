@@ -6,7 +6,10 @@
 #include <iostream>
 #include <memory>
 #include <utility>
+#include <random>
 #include <boost/asio.hpp>
+
+#include "3Des.h"
 
 std::atomic_uint Channel::m_nConnectIDSerial = 0;
 
@@ -90,6 +93,7 @@ void Channel::OnRecvShakeHandRsp(const void *pPacket, int nLength)
 	auto pRsp = (ShakeHandRsp*)((char*)pPacket + pHead->nHeadSize);
 	if (pRsp->nResult == 0) {
 		m_nServiceID = pRsp->nServiceID;
+		memcpy(m_chPeerEncryptKey, pRsp->chEncryptKey, sizeof(m_chPeerEncryptKey));
 	}
 
 	m_pChannelMgr->AddService(shared_from_this());
@@ -114,6 +118,18 @@ void Channel::OnRecvShakeHandReq(const void *pPacket, int nLength)
 	auto pRsp = (ShakeHandRsp*)(buf + pRspHead->nHeadSize);
 	pRsp->nServiceID = m_pChannelMgr->GetServiceID();
 	m_pChannelMgr->AddService(shared_from_this());
+
+	// 1. 创建随机数的生成器
+	std::mt19937 randomGenerator;
+	// 2. 创建随机数的分布函数
+	std::uniform_int_distribution<> urd(0, 255);
+	// 3. 装配生成器与分布函数，生成变量生成器
+	/*std::variate_generator<mt19937, uniform_real_distribution<double> > vg(randomGenerator, urd);*/
+	for (int i = 0; i < sizeof(m_chSelfEncryptKey); ++i) {
+		m_chSelfEncryptKey[i] = urd(randomGenerator);
+	}
+
+	memcpy(pRsp->chEncryptKey, m_chSelfEncryptKey, sizeof(pRsp->chEncryptKey));
 
 	write(buf, nPackageLen);
 
@@ -159,14 +175,20 @@ void Channel::DoReadBody(const NetHead & head)
 void Channel::SendMsg(const void *pMsg, std::size_t nDataLen)
 {
 	auto self(shared_from_this());
-	int nPackageLen = sizeof(NetHead) + nDataLen;
+	int nEncryptLen = (nDataLen + 7 / 8) * 8;
+	int nPackageLen = sizeof(NetHead) + nEncryptLen;
+	char *pBuf = new char[nEncryptLen];
+	memcpy(pBuf, pMsg, nDataLen);
 	char *pData = new char[nPackageLen];
 	auto pHead = (NetHead*)pData;
 	pHead->nHeadSize = sizeof(NetHead);
-	pHead->nBodySize = nDataLen;
+	pHead->nBodySize = nEncryptLen;
 	pHead->nMsgType = ggmtMsg;
-
-	memcpy(pData + pHead->nHeadSize, pMsg, nDataLen);
+	pHead->nEncryptMethod = ggem3dec;
+	//memcpy(pData + pHead->nHeadSize, pMsg, nDataLen);
+	C3DES des;
+	des.DoDES(pData + pHead->nHeadSize, pBuf, nEncryptLen, m_chSelfEncryptKey, sizeof(m_chSelfEncryptKey), ENCRYPT);
+	delete[]pBuf;
 
 	m_pIoContext->post([self, pData, nPackageLen]() {
 		DataEle de = { pData,nPackageLen };
@@ -239,7 +261,13 @@ void Channel::OnReceivePacket(const void *pPacket, int nLength)
 	break;
 	case ggmtMsg: {
 		if (m_pChannelMgr->m_fnOnReceiveMsg) {
-			m_pChannelMgr->m_fnOnReceiveMsg(m_nServiceID, m_nConnectID, (char *)pPacket + pHead->nHeadSize, pHead->nBodySize);
+			char *pData = new char[pHead->nBodySize];
+
+			// 解密
+			C3DES des;
+			des.DoDES(pData, (char *)pPacket + pHead->nHeadSize, pHead->nBodySize, m_chPeerEncryptKey, sizeof(m_chPeerEncryptKey), DECRYPT);
+			m_pChannelMgr->m_fnOnReceiveMsg(m_nServiceID, m_nConnectID, pData, pHead->nBodySize);
+			delete[]pData;
 		}
 	}break;
 	default:

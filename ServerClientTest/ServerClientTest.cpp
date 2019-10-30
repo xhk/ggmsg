@@ -4,7 +4,10 @@
 #include "pch.h"
 #include <iostream>
 #include <thread>
+#include <vector>
 #include "../ggmsg/ggmsg.h"
+
+std::vector<int> clientConnectIDList;
 
 int OnPositiveConnect(int nServiceID, int nConnectID)
 {
@@ -16,6 +19,8 @@ int OnPositiveConnect(int nServiceID, int nConnectID)
 // nSeviceID 发起连接的服务ID
 int OnPassiveConnect(int nSeviceID, int nConnectID)
 {
+	clientConnectIDList.push_back(nConnectID);
+
 	std::cout << "OnPassiveConnect " << nSeviceID << " " << nConnectID << "\n";
 	return 0;
 }
@@ -33,16 +38,25 @@ int main(int argc, char *argv[])
 		std::cout << "Server Start!\n";
 
 		ggmsg_Start(c, 9, 9009, OnPassiveConnect, OnReceiveMsg);
+		char msg[] = "hello client";
+		int nMsgLen = strlen(msg) + 1;
+		for (int i = 0; i < 100; ++i) {
+			std::this_thread::sleep_for(std::chrono::seconds(2));
+			for (int cid : clientConnectIDList) {
+				ggmsg_SendToConnect(c, cid, msg, nMsgLen);
+			}
+		}
 	}
 	else {
 		std::cout << "Client Start!\n";
 
 		ggmsg_Connect(c, "127.0.0.1", 9009, OnPositiveConnect, OnReceiveMsg);
 		char msg[] = "hello server";
+		int nMsgLen = strlen(msg) + 1;
 		std::this_thread::sleep_for(std::chrono::seconds(2));
 		for (int i = 0; i < 100; ++i) {
 			std::this_thread::sleep_for(std::chrono::seconds(2));
-			ggmsg_SendToService(c, 9, msg, strlen(msg));
+			ggmsg_SendToService(c, 9, msg, nMsgLen);
 		}
 	}
 

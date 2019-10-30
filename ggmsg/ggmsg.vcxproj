@@ -151,6 +151,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="3DES.h" />
     <ClInclude Include="ChannelMgr.h" />
     <ClInclude Include="define.h" />
     <ClInclude Include="Channel.h" />
@@ -160,6 +161,7 @@
     <ClInclude Include="Timer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="3DES.cpp" />
     <ClCompile Include="ChannelMgr.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="ggmsg.cpp" />

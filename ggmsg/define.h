@@ -20,9 +20,15 @@ enum ggmsgType
 	ggmtMsg = 101 // 正常通信了
 };
 
+enum ggmsgEncryptMethod{
+	ggemNone,
+	ggem3dec,
+};
+
 struct ShakeHandReq
 {
 	int nServiceID; // 请求方的ServiceID
+	char chEncryptKey[32];
 	char chDesc[1024];
 };
 
@@ -30,6 +36,7 @@ struct ShakeHandRsp
 {
 	int nServiceID; // 回应方的ServiceID
 	int nResult;
+	char chEncryptKey[32];
 	char chInfo[1024];
 };
 
