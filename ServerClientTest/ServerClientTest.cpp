@@ -5,8 +5,11 @@
 #include <iostream>
 #include <thread>
 #include <vector>
+#include <mutex>
+
 #include "../ggmsg/ggmsg.h"
 
+std::mutex connectIDLock;
 std::vector<int> clientConnectIDList;
 
 int OnPositiveConnect(int nServiceID, int nConnectID)
@@ -15,13 +18,33 @@ int OnPositiveConnect(int nServiceID, int nConnectID)
 	return 0;
 }
 
+int OnPositiveDisConnect(int nServiceID, int nConnectID)
+{
+	std::cout << "OnPositiveDisConnect " << nServiceID << " " << nConnectID << "\n";
+	return 0;
+}
+
 // 被动连接通知
 // nSeviceID 发起连接的服务ID
 int OnPassiveConnect(int nSeviceID, int nConnectID)
 {
+	std::lock_guard<std::mutex> lk(connectIDLock);
 	clientConnectIDList.push_back(nConnectID);
 
 	std::cout << "OnPassiveConnect " << nSeviceID << " " << nConnectID << "\n";
+	return 0;
+}
+
+int OnPassiveDisConnect(int nSeviceID, int nConnectID)
+{
+	std::lock_guard<std::mutex> lk(connectIDLock);
+	auto it = clientConnectIDList.begin();
+	for (; it != clientConnectIDList.end(); ++it) {
+		clientConnectIDList.erase(it);
+		break;
+	}
+
+	std::cout << "OnPassiveDisConnect " << nSeviceID << " " << nConnectID << "\n";
 	return 0;
 }
 
@@ -37,11 +60,12 @@ int main(int argc, char *argv[])
 	if (!strcmp(argv[1], ("server"))) {
 		std::cout << "Server Start!\n";
 
-		ggmsg_Start(c, 9, 9009, OnPassiveConnect, OnReceiveMsg);
+		ggmsg_Start(c, 9, 9009, OnPassiveConnect, OnPassiveDisConnect, OnReceiveMsg);
 		char msg[] = "hello client";
 		int nMsgLen = strlen(msg) + 1;
 		for (int i = 0; i < 100; ++i) {
 			std::this_thread::sleep_for(std::chrono::seconds(2));
+			std::lock_guard<std::mutex> lk(connectIDLock);
 			for (int cid : clientConnectIDList) {
 				ggmsg_SendToConnect(c, cid, msg, nMsgLen);
 			}
@@ -50,7 +74,7 @@ int main(int argc, char *argv[])
 	else {
 		std::cout << "Client Start!\n";
 
-		ggmsg_Connect(c, "127.0.0.1", 9009, OnPositiveConnect, OnReceiveMsg);
+		ggmsg_Connect(c, "127.0.0.1", 9009, OnPositiveConnect, OnPositiveDisConnect, OnReceiveMsg);
 		char msg[] = "hello server";
 		int nMsgLen = strlen(msg) + 1;
 		std::this_thread::sleep_for(std::chrono::seconds(2));

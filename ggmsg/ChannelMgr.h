@@ -53,12 +53,14 @@ public:
 	
 	void Start(int nServiceID, short port, 
 		FnOnPassiveConnect fnOnPassiveConnect,
+		FnOnPassiveDisConnect fnOnPassiveDisConnect,
 		FnOnReceiveMsg fnOnReceiveMsg);
 	void Stop();
 
 	// 主动发起连接
 	bool Connect(const std::string & strHost, short sPort,
 		FnOnPositiveConnect fnOnPositiveConnect,
+		FnOnPositiveDisConnect fnOnPositiveDisConnect,
 		FnOnReceiveMsg fnOnReceiveMsg);
 
 	typedef std::vector<std::shared_ptr<Channel> > ChannelList;
@@ -90,7 +92,9 @@ private:
 
 	std::unordered_map<int, std::shared_ptr<Channel> > m_services;
 	FnOnPositiveConnect m_fnOnPositiveConnect;
+	FnOnPositiveDisConnect m_fnOnPositiveDisConnect;
 	FnOnPassiveConnect m_fnOnPassiveConnect;
+	FnOnPassiveDisConnect m_fnOnPassiveDisConnect;
 	FnOnReceiveMsg m_fnOnReceiveMsg;
 
 

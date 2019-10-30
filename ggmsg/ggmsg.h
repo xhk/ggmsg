@@ -15,10 +15,12 @@ extern "C" {
 
 // 主动连接的结果通知
 typedef int(*FnOnPositiveConnect)(int nServiceID, int nConnectID);
+typedef int(*FnOnPositiveDisConnect)(int nServiceID, int nConnectID);
 
 // 被动连接通知
 // nSeviceID 发起连接的服务ID
 typedef int(*FnOnPassiveConnect)(int nSeviceID, int nConnectID);
+typedef int(*FnOnPassiveDisConnect)(int nSeviceID, int nConnectID);
 
 typedef int(*FnOnReceiveMsg)(int nServiceID, int nConnectID, const void *pMsg, int nMsgLen);
 
@@ -28,11 +30,13 @@ void __ggmsg_interface__ ggmsg_Destory(__int64 c);
 
 void __ggmsg_interface__ ggmsg_Start(__int64 c, int nServiceID, short port,
 	FnOnPassiveConnect fnOnPassiveConnect,
+	FnOnPassiveDisConnect fnOnPassiveDisConnect,
 	FnOnReceiveMsg fnOnReceiveMsg);
 
 // 主动发起连接
 int __ggmsg_interface__ ggmsg_Connect(__int64 c, const char *szHost, short sPort,
 	FnOnPositiveConnect fnOnPositiveConnect,
+	FnOnPositiveDisConnect fnOnPositiveDisConnect,
 	FnOnReceiveMsg fnOnReceiveMsg);
 
 void __ggmsg_interface__ ggmsg_Stop(__int64 c);

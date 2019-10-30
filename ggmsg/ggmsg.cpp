@@ -24,6 +24,7 @@ void ggmsg_Destory(__int64 c) {
 
 void ggmsg_Start(__int64 c, int nServiceID, short port,
 	FnOnPassiveConnect fnOnPassiveConnect,
+	FnOnPassiveDisConnect fnOnPassiveDisConnect,
 	FnOnReceiveMsg fnOnReceiveMsg)
 {
 	auto pMgr = (ChannelMgr*)c;
@@ -31,7 +32,7 @@ void ggmsg_Start(__int64 c, int nServiceID, short port,
 		return;
 	}
 
-	pMgr->Start(nServiceID, port, fnOnPassiveConnect, fnOnReceiveMsg);
+	pMgr->Start(nServiceID, port, fnOnPassiveConnect, fnOnPassiveDisConnect, fnOnReceiveMsg);
 }
 
 // 主动发起连接
@@ -39,6 +40,7 @@ int ggmsg_Connect(
 	__int64 c,
 	const char *szHost, short sPort,
 	FnOnPositiveConnect fnOnPositiveConnect,
+	FnOnPositiveDisConnect fnOnPositiveDisConnect,
 	FnOnReceiveMsg fnOnReceiveMsg)
 {
 	auto pMgr = (ChannelMgr*)c;
@@ -46,7 +48,7 @@ int ggmsg_Connect(
 		return -1;
 	}
 
-	if (!pMgr->Connect(szHost, sPort, fnOnPositiveConnect, fnOnReceiveMsg)) {
+	if (!pMgr->Connect(szHost, sPort, fnOnPositiveConnect, fnOnPositiveDisConnect, fnOnReceiveMsg)) {
 		return -1;
 	}
 

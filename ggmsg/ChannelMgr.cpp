@@ -10,6 +10,7 @@
 
 void ChannelMgr::Start(int nServiceID, short port,
 	FnOnPassiveConnect fnOnPassiveConnect,
+	FnOnPassiveDisConnect fnOnPassiveDisConnect,
 	FnOnReceiveMsg fnOnReceiveMsg)
 {
 	m_nServiceID = nServiceID;
@@ -18,7 +19,7 @@ void ChannelMgr::Start(int nServiceID, short port,
 	acceptor_ = new tcp::acceptor(m_ioContext, tcp::endpoint(tcp::v4(), port));
 	m_fnOnReceiveMsg = fnOnReceiveMsg;
 	m_fnOnPassiveConnect = fnOnPassiveConnect;
-
+	m_fnOnPassiveDisConnect = fnOnPassiveDisConnect;
 	do_accept();
 	
 	if (!io_thread_.native_handle()) {
@@ -134,10 +135,12 @@ void ChannelMgr::do_accept()
 
 bool ChannelMgr::Connect(const std::string & strHost, short sPort,
 	FnOnPositiveConnect fnOnPositiveConnect,
+	FnOnPositiveDisConnect fnOnPositiveDisConnect,
 	FnOnReceiveMsg fnOnReceiveMsg
 )
 {
 	m_fnOnPositiveConnect = fnOnPositiveConnect;
+	m_fnOnPositiveDisConnect = fnOnPositiveDisConnect;
 	m_fnOnReceiveMsg = fnOnReceiveMsg;
 
 	return InternalConnect(strHost, sPort);

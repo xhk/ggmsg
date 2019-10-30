@@ -26,7 +26,15 @@ void Channel::do_close()
 	socket_.close();
 
 	if (m_channalType == ChannalType::positive) {
+		if (m_pChannelMgr->m_fnOnPositiveDisConnect) {
+			m_pChannelMgr->m_fnOnPositiveDisConnect(m_nServiceID, m_nConnectID);
+		}
 		m_pChannelMgr->InternalConnect(m_strRemoteIp, m_uRemotePort);
+	}
+	else {
+		if (m_pChannelMgr->m_fnOnPassiveDisConnect) {
+			m_pChannelMgr->m_fnOnPassiveDisConnect(m_nServiceID, m_nConnectID);
+		}
 	}
 }
 
@@ -134,7 +142,7 @@ void Channel::OnRecvShakeHandReq(const void *pPacket, int nLength)
 	write(buf, nPackageLen);
 
 	if (m_pChannelMgr->m_fnOnPassiveConnect) {
-		m_pChannelMgr->m_fnOnPassiveConnect(m_pChannelMgr->GetServiceID(), m_nConnectID);
+		m_pChannelMgr->m_fnOnPassiveConnect(m_nServiceID, m_nConnectID);
 	}
 }
 
