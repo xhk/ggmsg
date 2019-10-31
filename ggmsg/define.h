@@ -6,6 +6,8 @@ struct NetHead
 	int nMagic;
 	int nHeadSize;
 	int nBodySize;
+	int nBeforeCompressLen;
+	int nBeforeEncryptLen;
 	short nCompressMethod;
 	short nEncryptMethod;
 	int nMsgType;

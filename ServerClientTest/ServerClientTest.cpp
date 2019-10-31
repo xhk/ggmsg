@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 			std::this_thread::sleep_for(std::chrono::seconds(2));
 			std::lock_guard<std::mutex> lk(connectIDLock);
 			for (int cid : clientConnectIDList) {
-				ggmsg_SendToConnect(c, cid, msg, nMsgLen);
+				//ggmsg_SendToConnect(c, cid, msg, nMsgLen);
 			}
 		}
 	}

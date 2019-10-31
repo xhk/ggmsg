@@ -9,8 +9,14 @@ namespace nggmsg
 {
     public class Channel
     {
+		public event FnOnPassiveConnect OnPassiveConnect;
+		public event FnOnPassiveDisConnect OnPassiveDisConnect;
+
+		public event FnOnPositiveConnect OnPositiveConnect;
+		public event FnOnPositiveDisConnect OnPositiveDisConnect;
+		public event FnOnReceiveMsg OnReceiveMsg;
+
 		private long handle;
-		FnOnReceiveMsg OnRecvMsg;
 		public Channel()
 		{
 			handle = ggmsg_Create();
@@ -22,21 +28,15 @@ namespace nggmsg
 				ggmsg_Destory(handle);
 			}
 		}
-		public void Start(int nServiceID, short port,
-			FnOnPassiveConnect fnOnPassiveConnect,
-			FnOnReceiveMsg fnOnReceiveMsg)
+		public void Start(int nServiceID, short port)
 		{
-			OnRecvMsg = fnOnReceiveMsg;
-			ggmsg_Start(handle, nServiceID, port, fnOnPassiveConnect, OnReceiveMsg);
+			ggmsg_Start(handle, nServiceID, port, OnPassiveConnect, OnPassiveDisConnect, InternalOnReceiveMsg);
 		}
 
-		public bool Connect(string strHost, short port,
-			FnOnPositiveConnect fnOnPositiveConnect,
-			FnOnReceiveMsg fnOnReceiveMsg)
+		public bool Connect(string strHost, short port)
 		{
-			OnRecvMsg = fnOnReceiveMsg;
 			var pszHost = Marshal.StringToHGlobalAnsi(strHost);
-			var nRet = ggmsg_Connect(handle, pszHost, port, fnOnPositiveConnect, OnReceiveMsg);
+			var nRet = ggmsg_Connect(handle, pszHost, port, OnPositiveConnect, OnPositiveDisConnect, InternalOnReceiveMsg);
 			Marshal.FreeHGlobal(pszHost);
 			return nRet == 0;
 		}
@@ -75,7 +75,7 @@ namespace nggmsg
 			return nRet == 0;
 		}
 
-		private void OnReceiveMsg(int nServiceID, int nConnectID, IntPtr pMsg, int nMsgLen)
+		private void InternalOnReceiveMsg(int nServiceID, int nConnectID, IntPtr pMsg, int nMsgLen)
 		{
 			var msg = new byte[nMsgLen];
 			var p = pMsg;
@@ -85,7 +85,7 @@ namespace nggmsg
 				p += 1;
 			}
 
-			OnRecvMsg(nServiceID, nConnectID, msg);
+			OnReceiveMsg?.Invoke(nServiceID, nConnectID, msg);
 		}
 
 		public delegate void FnOnReceiveMsg(int nServiceID, int nConnectID, byte[] msg);
@@ -95,6 +95,12 @@ namespace nggmsg
 
 		[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 		public delegate void FnOnPassiveConnect(int nServiceID, int nConnectID);
+
+		[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+		public delegate void FnOnPositiveDisConnect(int nServiceID, int nConnectID);
+
+		[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+		public delegate void FnOnPassiveDisConnect(int nServiceID, int nConnectID);
 
 		[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 		private delegate void InternalFnOnReceiveMsg(int nServiceID, int nConnectID, IntPtr pMsg, int nMsgLen);
@@ -109,12 +115,14 @@ namespace nggmsg
 		private static extern void ggmsg_Start(
 			long c, int nServiceID, short port,
 			FnOnPassiveConnect fnOnPassiveConnect,
+			FnOnPassiveDisConnect fnOnPassiveDisConnect,
 			InternalFnOnReceiveMsg fnOnReceiveMsg);
 
 		[DllImport("ggmsg.dll", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
 		private static extern int ggmsg_Connect(
 			long c, IntPtr pszHost, short port,
 			FnOnPositiveConnect fnOnPositiveConnect,
+			FnOnPositiveDisConnect fnOnPositiveDisConnect,
 			InternalFnOnReceiveMsg fnOnReceiveMsg);
 
 		[DllImport("ggmsg.dll", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]

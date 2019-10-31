@@ -42,6 +42,8 @@ public:
 		
 		m_channalType = (ChannalType)nChannalType;
 		m_nConnectID = ++m_nConnectIDSerial;
+		m_nRecvBufLen = 1024;
+		m_pRecvBuf = new char[m_nRecvBufLen];
 	}
 	
 	~Channel();
@@ -102,8 +104,9 @@ private:
 	boost::asio::io_context *m_pIoContext;
 	ChannelMgr *m_pChannelMgr;
 	tcp::socket socket_;
-	enum { max_length = 1024 };
-	char data_[max_length];
+
+	char *m_pRecvBuf;
+	int m_nRecvBufLen;
 
 	time_t m_tCreateTime; // 回话创建时间
 

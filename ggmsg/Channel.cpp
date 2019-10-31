@@ -15,7 +15,8 @@ std::atomic_uint Channel::m_nConnectIDSerial = 0;
 
 Channel::~Channel()
 {
-	
+	delete[]m_pRecvBuf;
+
 }
 
 
@@ -149,7 +150,7 @@ void Channel::OnRecvShakeHandReq(const void *pPacket, int nLength)
 void Channel::DoReadHead() 
 {
 	auto self(shared_from_this());
-	boost::asio::async_read(socket_, boost::asio::buffer(data_, sizeof(NetHead)), 
+	boost::asio::async_read(socket_, boost::asio::buffer(m_pRecvBuf, sizeof(NetHead)), 
 		[this, self](boost::system::error_code ec, std::size_t length)
 	{
 		if (ec) {
@@ -157,7 +158,7 @@ void Channel::DoReadHead()
 		}
 		else {
 			//std::cout << "read head completed \n";
-			auto pNetHead = (NetHead*)data_;
+			auto pNetHead = (NetHead*)m_pRecvBuf;
 			DoReadBody(*pNetHead);
 		}
 	});
@@ -166,15 +167,25 @@ void Channel::DoReadHead()
 void Channel::DoReadBody(const NetHead & head)
 {
 	auto self(shared_from_this());
-	boost::asio::async_read(socket_, boost::asio::buffer(data_ + head.nHeadSize, head.nBodySize),
+	int nHeadSize = head.nHeadSize;
+	int nBodySize = head.nBodySize;
+	if (m_nRecvBufLen < nHeadSize + nBodySize) {
+		m_nRecvBufLen = (nHeadSize + nBodySize + 1024) / 1024 * 1024;
+		char *pNewBuf = new char[m_nRecvBufLen];
+		memcpy(pNewBuf, m_pRecvBuf, nHeadSize);
+		delete[]m_pRecvBuf;
+		m_pRecvBuf = pNewBuf;
+	}
+
+	boost::asio::async_read(socket_, boost::asio::buffer(m_pRecvBuf + nHeadSize, nBodySize),
 		[this, self](boost::system::error_code ec, std::size_t length)
 	{
 		if (ec) {
 			do_close();
 		}
 		else {
-			auto pNetHead = (NetHead*)data_;
-			OnReceivePacket(data_, pNetHead->nHeadSize + pNetHead->nBodySize);
+			auto pNetHead = (NetHead*)m_pRecvBuf;
+			OnReceivePacket(m_pRecvBuf, pNetHead->nHeadSize + pNetHead->nBodySize);
 			DoReadHead();
 		}
 	});
@@ -186,6 +197,7 @@ void Channel::SendMsg(const void *pMsg, std::size_t nDataLen)
 	int nEncryptLen = (nDataLen + 7 / 8) * 8;
 	int nPackageLen = sizeof(NetHead) + nEncryptLen;
 	char *pBuf = new char[nEncryptLen];
+	//memset(pBuf, 0, nEncryptLen);
 	memcpy(pBuf, pMsg, nDataLen);
 	char *pData = new char[nPackageLen];
 	auto pHead = (NetHead*)pData;
@@ -193,6 +205,7 @@ void Channel::SendMsg(const void *pMsg, std::size_t nDataLen)
 	pHead->nBodySize = nEncryptLen;
 	pHead->nMsgType = ggmtMsg;
 	pHead->nEncryptMethod = ggem3dec;
+	pHead->nBeforeEncryptLen = nDataLen;
 	//memcpy(pData + pHead->nHeadSize, pMsg, nDataLen);
 	C3DES des;
 	des.DoDES(pData + pHead->nHeadSize, pBuf, nEncryptLen, m_chSelfEncryptKey, sizeof(m_chSelfEncryptKey), ENCRYPT);
@@ -274,7 +287,7 @@ void Channel::OnReceivePacket(const void *pPacket, int nLength)
 			// ½âÃÜ
 			C3DES des;
 			des.DoDES(pData, (char *)pPacket + pHead->nHeadSize, pHead->nBodySize, m_chPeerEncryptKey, sizeof(m_chPeerEncryptKey), DECRYPT);
-			m_pChannelMgr->m_fnOnReceiveMsg(m_nServiceID, m_nConnectID, pData, pHead->nBodySize);
+			m_pChannelMgr->m_fnOnReceiveMsg(m_nServiceID, m_nConnectID, pData, pHead->nBeforeEncryptLen);
 			delete[]pData;
 		}
 	}break;
