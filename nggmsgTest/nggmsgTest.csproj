@@ -49,11 +49,5 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\nggmsg\nggmsg.csproj">
-      <Project>{cf57078f-dd86-4a3f-a555-22fa9ca56a4d}</Project>
-      <Name>nggmsg</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -10,8 +10,50 @@
 #include <boost/asio.hpp>
 
 #include "3Des.h"
+#include "Diagnosis.h"
+
 
 std::atomic_uint Channel::m_nConnectIDSerial = 0;
+
+Channel::Channel(ChannelMgr *pChannelMgr, tcp::socket socket, boost::asio::io_context *pIoContext, int nChannalType)
+	: socket_(std::move(socket))
+	, m_timerHeartBeat(*pIoContext)
+{
+	m_pIoContext = pIoContext;
+	m_pChannelMgr = pChannelMgr;
+	m_nLastActiveTime = std::time(0);
+	m_tCreateTime = std::time(0);
+	m_nSendTimes = 0;
+	m_nRecvTimes = 0;
+	m_nSendBytes = 0;
+	m_nRecvBytes = 0;
+
+	m_bSending = false;
+
+	m_channalType = (ChannalType)nChannalType;
+	m_nConnectID = ++m_nConnectIDSerial;
+	m_nRecvBufLen = 1024;
+	m_pRecvBuf = new char[m_nRecvBufLen];
+	// 1. 创建随机数的生成器
+	std::mt19937 randomGenerator;
+	// 2. 创建随机数的分布函数
+	std::uniform_int_distribution<> urd(0, 255);
+	// 3. 装配生成器与分布函数，生成变量生成器
+	/*std::variate_generator<mt19937, uniform_real_distribution<double> > vg(randomGenerator, urd);*/
+	for (int i = 0; i < sizeof(m_chSelfEncryptKey); ++i) {
+		m_chSelfEncryptKey[i] = urd(randomGenerator);
+	}
+
+	//std::wstring s;
+	//for (int i=0;i < sizeof(m_chSelfEncryptKey);++i)
+	//{
+	//	wchar_t buf[16] = { 0 };
+	//	_stprintf_s(buf, L"%0x", (unsigned char)m_chSelfEncryptKey[i]);
+	//	s += buf;
+	//}
+
+	//DiagnosisTrace(L"self key:%s\n", s.c_str());
+}
 
 Channel::~Channel()
 {
@@ -30,7 +72,10 @@ void Channel::do_close()
 		if (m_pChannelMgr->m_fnOnPositiveDisConnect) {
 			m_pChannelMgr->m_fnOnPositiveDisConnect(m_nServiceID, m_nConnectID);
 		}
-		m_pChannelMgr->InternalConnect(m_strRemoteIp, m_uRemotePort);
+
+		if (m_pChannelMgr->working_) {
+			m_pChannelMgr->InternalConnect(m_strRemoteIp, m_uRemotePort);
+		}
 	}
 	else {
 		if (m_pChannelMgr->m_fnOnPassiveDisConnect) {
@@ -91,6 +136,7 @@ void Channel::DoReqShakeHand()
 	
 	auto pReq = (ShakeHandReq*)(data + pHead->nHeadSize);
 	pReq->nServiceID = m_pChannelMgr->GetServiceID();
+	memcpy(pReq->chEncryptKey, m_chSelfEncryptKey, sizeof(pReq->chEncryptKey));
 
 	write(data, nPackageLen);
 	DoReadHead();
@@ -98,6 +144,7 @@ void Channel::DoReqShakeHand()
 
 void Channel::OnRecvShakeHandRsp(const void *pPacket, int nLength)
 {
+	DiagnosisTrace(L"OnRecvShakeHandRsp: %0x\n", this);
 	auto pHead = (NetHead*)pPacket;
 	auto pRsp = (ShakeHandRsp*)((char*)pPacket + pHead->nHeadSize);
 	if (pRsp->nResult == 0) {
@@ -114,9 +161,12 @@ void Channel::OnRecvShakeHandRsp(const void *pPacket, int nLength)
 
 void Channel::OnRecvShakeHandReq(const void *pPacket, int nLength)
 {
+	DiagnosisTrace(L"OnRecvShakeHandReq:%0x\n", this);
+
 	auto pReqHead = (NetHead*)pPacket;
 	auto pReq = (ShakeHandReq*)((char*)pPacket + pReqHead->nHeadSize);
 	m_nServiceID = pReq->nServiceID;
+	memcpy(m_chPeerEncryptKey, pReq->chEncryptKey, sizeof(m_chPeerEncryptKey));
 
 	const int nPackageLen = sizeof(NetHead) + sizeof(ShakeHandRsp);
 	char buf[nPackageLen] = { 0 };
@@ -127,17 +177,6 @@ void Channel::OnRecvShakeHandReq(const void *pPacket, int nLength)
 	auto pRsp = (ShakeHandRsp*)(buf + pRspHead->nHeadSize);
 	pRsp->nServiceID = m_pChannelMgr->GetServiceID();
 	m_pChannelMgr->AddService(shared_from_this());
-
-	// 1. 创建随机数的生成器
-	std::mt19937 randomGenerator;
-	// 2. 创建随机数的分布函数
-	std::uniform_int_distribution<> urd(0, 255);
-	// 3. 装配生成器与分布函数，生成变量生成器
-	/*std::variate_generator<mt19937, uniform_real_distribution<double> > vg(randomGenerator, urd);*/
-	for (int i = 0; i < sizeof(m_chSelfEncryptKey); ++i) {
-		m_chSelfEncryptKey[i] = urd(randomGenerator);
-	}
-
 	memcpy(pRsp->chEncryptKey, m_chSelfEncryptKey, sizeof(pRsp->chEncryptKey));
 
 	write(buf, nPackageLen);
@@ -191,33 +230,6 @@ void Channel::DoReadBody(const NetHead & head)
 	});
 }
 
-void Channel::SendMsg(const void *pMsg, std::size_t nDataLen)
-{
-	auto self(shared_from_this());
-	int nEncryptLen = (nDataLen + 7 / 8) * 8;
-	int nPackageLen = sizeof(NetHead) + nEncryptLen;
-	char *pBuf = new char[nEncryptLen];
-	//memset(pBuf, 0, nEncryptLen);
-	memcpy(pBuf, pMsg, nDataLen);
-	char *pData = new char[nPackageLen];
-	auto pHead = (NetHead*)pData;
-	pHead->nHeadSize = sizeof(NetHead);
-	pHead->nBodySize = nEncryptLen;
-	pHead->nMsgType = ggmtMsg;
-	pHead->nEncryptMethod = ggem3dec;
-	pHead->nBeforeEncryptLen = nDataLen;
-	//memcpy(pData + pHead->nHeadSize, pMsg, nDataLen);
-	C3DES des;
-	des.DoDES(pData + pHead->nHeadSize, pBuf, nEncryptLen, m_chSelfEncryptKey, sizeof(m_chSelfEncryptKey), ENCRYPT);
-	delete[]pBuf;
-
-	m_pIoContext->post([self, pData, nPackageLen]() {
-		DataEle de = { pData,nPackageLen };
-		self->m_dataQueue.push(de);
-		self->do_write();
-	});
-}
-
 void Channel::write(char *data, std::size_t length) {
 	auto self(shared_from_this());
 	char *pData = new char[length];
@@ -264,6 +276,46 @@ void Channel::do_write() {
 }
 	
 
+void Channel::SendMsg(const void *pMsg, std::size_t nDataLen)
+{
+	auto self(shared_from_this());
+	int nEncryptLen = (nDataLen + 7) / 8 * 8;
+
+	int nPackageLen = sizeof(NetHead) + nEncryptLen;
+	char *pBuf = new char[nEncryptLen];
+	memset(pBuf, 0, nEncryptLen);
+	memcpy(pBuf, pMsg, nDataLen);
+	char *pData = new char[nPackageLen];
+	auto pHead = (NetHead*)pData;
+	pHead->nHeadSize = sizeof(NetHead);
+	pHead->nBodySize = nEncryptLen;
+	pHead->nMsgType = ggmtMsg;
+	pHead->nEncryptMethod = ggem3dec;
+	pHead->nBeforeEncryptLen = nDataLen;
+	//memcpy(pData + pHead->nHeadSize, pMsg, nDataLen);
+	/*C3DES des;
+	des.DoDES(pData + pHead->nHeadSize, pBuf, nEncryptLen, m_chSelfEncryptKey, 24, ENCRYPT);
+	{
+		int i = 0;
+		char *pDeBuf = new char[nEncryptLen];
+		C3DES des;
+		des.DoDES(pDeBuf, pData + pHead->nHeadSize, nEncryptLen, m_chSelfEncryptKey, 24, DECRYPT);
+		if (memcmp(pBuf, pDeBuf, nEncryptLen)) {
+			i++;
+		}
+		delete[] pDeBuf;
+	}*/
+
+	memcpy(pData + pHead->nHeadSize, pBuf, nEncryptLen);
+	delete[]pBuf;
+
+	m_pIoContext->post([self, pData, nPackageLen]() {
+		DataEle de = { pData,nPackageLen };
+		self->m_dataQueue.push(de);
+		self->do_write();
+	});
+}
+
 void Channel::OnReceivePacket(const void *pPacket, int nLength)
 {
 	//std::cout << "OnReceivePacket\n";
@@ -284,9 +336,20 @@ void Channel::OnReceivePacket(const void *pPacket, int nLength)
 		if (m_pChannelMgr->m_fnOnReceiveMsg) {
 			char *pData = new char[pHead->nBodySize];
 
+			/*std::wstring s;
+			for (int i = 0; i < sizeof(m_chPeerEncryptKey); ++i)
+			{
+				wchar_t buf[16] = { 0 };
+				_stprintf_s(buf, L"%0x", (unsigned char)m_chPeerEncryptKey[i]);
+				s += buf;
+			}
+
+			DiagnosisTrace(L"peer key:%s\n", s.c_str());*/
+
 			// 解密
-			C3DES des;
-			des.DoDES(pData, (char *)pPacket + pHead->nHeadSize, pHead->nBodySize, m_chPeerEncryptKey, sizeof(m_chPeerEncryptKey), DECRYPT);
+			/*C3DES des;
+			des.DoDES(pData, (char *)pPacket + pHead->nHeadSize, pHead->nBodySize, m_chPeerEncryptKey, 24, DECRYPT);*/
+			memcpy(pData, (char *)pPacket + pHead->nHeadSize, pHead->nBodySize);
 			m_pChannelMgr->m_fnOnReceiveMsg(m_nServiceID, m_nConnectID, pData, pHead->nBeforeEncryptLen);
 			delete[]pData;
 		}

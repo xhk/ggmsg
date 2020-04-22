@@ -25,26 +25,7 @@ class Channel
 	: public std::enable_shared_from_this<Channel>
 {
 public:
-	Channel(ChannelMgr *pChannelMgr, tcp::socket socket, boost::asio::io_context *pIoContext, int nChannalType)
-		: socket_(std::move(socket))
-		, m_timerHeartBeat(*pIoContext)
-	{
-		m_pIoContext = pIoContext;
-		m_pChannelMgr = pChannelMgr;
-		m_nLastActiveTime = std::time(0);
-		m_tCreateTime = std::time(0);
-		m_nSendTimes = 0;
-		m_nRecvTimes = 0;
-		m_nSendBytes = 0;
-		m_nRecvBytes = 0;
-
-		m_bSending = false;
-		
-		m_channalType = (ChannalType)nChannalType;
-		m_nConnectID = ++m_nConnectIDSerial;
-		m_nRecvBufLen = 1024;
-		m_pRecvBuf = new char[m_nRecvBufLen];
-	}
+	Channel(ChannelMgr *pChannelMgr, tcp::socket socket, boost::asio::io_context *pIoContext, int nChannalType);
 	
 	~Channel();
 

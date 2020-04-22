@@ -48,45 +48,80 @@ int OnPassiveDisConnect(int nSeviceID, int nConnectID)
 	return 0;
 }
 
+int OnServerReceiveMsg(int nServiceID, int nConnectID, const void *pMsg, int nMsgLen)
+{
+	std::cout << "from Service:" << nServiceID << " ConnectID:" << nConnectID << ", msg content:" << (char*)pMsg << "\n";
+	return 0;
+}
+
 int OnReceiveMsg(int nServiceID, int nConnectID, const void *pMsg, int nMsgLen)
 {
 	std::cout << "from Service:" << nServiceID << " ConnectID:" << nConnectID << ", msg content:" << (char*)pMsg << "\n";
 	return 0;
 }
 
-int main(int argc, char *argv[])
-{	
-	auto c = ggmsg_Create();
-	if (!strcmp(argv[1], ("server"))) {
-		std::cout << "Server Start!\n";
+void TestClientServer() {
+	auto server = ggmsg_Create();
+	auto client = ggmsg_Create();
 
-		ggmsg_Start(c, 9, 9009, OnPassiveConnect, OnPassiveDisConnect, OnReceiveMsg);
+	{
+		ggmsg_Start(server, 9, 9009, OnPassiveConnect, OnPassiveDisConnect, OnServerReceiveMsg);
+	}
+
+	{
+		std::cout << "Client Start!\n";
+
+		ggmsg_Connect(client, "127.0.0.1", 9009, OnPositiveConnect, OnPositiveDisConnect, OnReceiveMsg);
+		char msg[] = "hello server";
+		int nMsgLen = strlen(msg) + 1;
+		std::this_thread::sleep_for(std::chrono::seconds(2));
+		for (int i = 0; i < 100; ++i) {
+			std::this_thread::sleep_for(std::chrono::seconds(2));
+			ggmsg_SendToService(client, 9, msg, nMsgLen);
+		}
+	}
+	
+	{
 		char msg[] = "hello client";
 		int nMsgLen = strlen(msg) + 1;
 		for (int i = 0; i < 100; ++i) {
 			std::this_thread::sleep_for(std::chrono::seconds(2));
 			std::lock_guard<std::mutex> lk(connectIDLock);
 			for (int cid : clientConnectIDList) {
-				//ggmsg_SendToConnect(c, cid, msg, nMsgLen);
+				ggmsg_SendToConnect(server, cid, msg, nMsgLen);
 			}
 		}
 	}
-	else {
-		std::cout << "Client Start!\n";
 
-		ggmsg_Connect(c, "127.0.0.1", 9009, OnPositiveConnect, OnPositiveDisConnect, OnReceiveMsg);
+	ggmsg_Stop(server);
+	ggmsg_Destory(server);
+	ggmsg_Stop(client);
+	ggmsg_Destory(client);
+}
+
+void TestFlashClient() 
+{
+	auto server = ggmsg_Create();
+	ggmsg_Start(server, 9, 9009, OnPassiveConnect, OnPassiveDisConnect, OnServerReceiveMsg);
+
+	for (int i=0;i<10000;++i)
+	{
+		auto client = ggmsg_Create();
+		ggmsg_Connect(server, "127.0.0.1", 9009, OnPositiveConnect, OnPositiveDisConnect, OnReceiveMsg);
 		char msg[] = "hello server";
 		int nMsgLen = strlen(msg) + 1;
-		std::this_thread::sleep_for(std::chrono::seconds(2));
-		for (int i = 0; i < 100; ++i) {
-			std::this_thread::sleep_for(std::chrono::seconds(2));
-			ggmsg_SendToService(c, 9, msg, nMsgLen);
-		}
+		ggmsg_SendToService(client, 9, msg, nMsgLen);
+		ggmsg_Stop(client);
+		ggmsg_Destory(client);
 	}
 
-	getchar();
-	ggmsg_Stop(c);
-	ggmsg_Destory(c);
+	ggmsg_Stop(server);
+	ggmsg_Destory(server);
+}
+
+int main(int argc, char *argv[])
+{	
+	TestFlashClient();
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单

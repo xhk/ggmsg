@@ -13,11 +13,25 @@ int OnPositiveConnect(int nServiceID, int nConnectID)
 	return 0;
 }
 
+int OnPositiveDisConnect(int nServiceID, int nConnectID)
+{
+	std::cout << "OnPositiveDisConnect " << nServiceID << " " << nConnectID << "\n";
+	return 0;
+}
+
+
+
 // 被动连接通知
 // nSeviceID 发起连接的服务ID
 int OnPassiveConnect(int nSeviceID, int nConnectID)
 {
 	std::cout << "OnPassiveConnect " << nSeviceID << " " << nConnectID << "\n";
+	return 0;
+}
+
+int OnPassiveDisConnect(int nSeviceID, int nConnectID)
+{
+	std::cout << "OnPassiveDisConnect " << nSeviceID << " " << nConnectID << "\n";
 	return 0;
 }
 
@@ -33,13 +47,13 @@ int main(int argc, TCHAR *argv[])
 	short sPort = _ttoi(argv[2]);
     std::cout << "Hello World!\n"; 
 	ChannelMgr node;
-	node.Start(nServiceID, sPort, OnPassiveConnect, OnReceiveMsg);
+	node.Start(nServiceID, sPort, OnPassiveConnect, OnPassiveDisConnect, OnReceiveMsg);
 
 	if (argc > 3) {
 		std::string host = argv[3];
 		short port = _ttoi(argv[4]);
 		
-		node.Connect(host, port, OnPositiveConnect, OnReceiveMsg);
+		node.Connect(host, port, OnPositiveConnect, OnPositiveDisConnect, OnReceiveMsg);
 		char buf[32] = { 0 };
 		getchar();
 		for (int i=0;i<1000;++i)

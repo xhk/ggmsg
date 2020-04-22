@@ -39,6 +39,9 @@
     <ClInclude Include="3DES.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Diagnosis.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -57,6 +60,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="3DES.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Diagnosis.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
