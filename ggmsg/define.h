@@ -24,7 +24,7 @@ enum ggmsgType
 
 enum ggmsgEncryptMethod{
 	ggemNone,
-	ggem3dec,
+	ggem3des,
 };
 
 struct ShakeHandReq

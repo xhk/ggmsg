@@ -6,8 +6,10 @@
 #include <thread>
 #include <vector>
 #include <mutex>
+#include <random>
 
 #include "../ggmsg/ggmsg.h"
+#include "3DES.h"
 
 std::mutex connectIDLock;
 std::vector<int> clientConnectIDList;
@@ -119,9 +121,64 @@ void TestFlashClient()
 	ggmsg_Destory(server);
 }
 
+char key[32] = { 0 };
+
+std::vector<bool> results[16];
+void Test3Des(int no) 
+{
+	for (int i = 0; i < 1000; ++i) {
+
+	
+		//strcpy_s(key, "01234567890123456789");
+		C3DES des3;
+		char plain[128] = { 0 };
+		strcpy_s(plain, "1234567890123456");
+		for (int i = 16; i < 32; ++i) {
+			plain[i] = 0-i;
+		}
+
+		char out[1024] = { 0 };
+		des3.DoDES(out, plain, 32, key, 32, ENCRYPT);
+
+		C3DES des2;
+		char out2[1024] = { 0 };
+		des2.DoDES(out2, out, 32, key, 32, DECRYPT);
+		bool bRet = memcmp(plain, out2, 16)==0;
+		results[no].push_back(bRet);
+	}
+}
+
 int main(int argc, char *argv[])
 {	
-	TestFlashClient();
+	// 1. 创建随机数的生成器
+	std::mt19937 randomGenerator;
+	// 2. 创建随机数的分布函数
+	std::uniform_int_distribution<> urd(0, 255);
+	// 3. 装配生成器与分布函数，生成变量生成器
+	/*std::variate_generator<mt19937, uniform_real_distribution<double> > vg(randomGenerator, urd);*/
+	for (int i = 0; i < sizeof(key); ++i) {
+		key[i] = urd(randomGenerator);
+	}
+
+	//TestFlashClient();
+	const int threadCount = 16;
+	std::thread *threads[threadCount];
+	for (int i=0;i< threadCount;++i)
+	{
+		threads[i] = new std::thread(Test3Des, i);
+	}
+
+	for (int i = 0; i < threadCount; ++i)
+	{
+		threads[i]->join();
+		for (auto b : results[i]) {
+			if (!b) {
+				std::cout << "False\n";
+			}
+		}
+	}
+
+	return 0;
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单

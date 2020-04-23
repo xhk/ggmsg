@@ -275,36 +275,35 @@ void Channel::do_write() {
 	});
 }
 	
-
+std::mutex m;
 void Channel::SendMsg(const void *pMsg, std::size_t nDataLen)
 {
 	auto self(shared_from_this());
 	int nEncryptLen = (nDataLen + 7) / 8 * 8;
-
-	int nPackageLen = sizeof(NetHead) + nEncryptLen;
+	nEncryptLen = 128;
 	char *pBuf = new char[nEncryptLen];
 	memset(pBuf, 0, nEncryptLen);
 	memcpy(pBuf, pMsg, nDataLen);
+	
+	int nPackageLen = sizeof(NetHead) + nEncryptLen;
 	char *pData = new char[nPackageLen];
+	memset(pData, 0, nPackageLen);
+
 	auto pHead = (NetHead*)pData;
+	pHead->nMagic = 0;
 	pHead->nHeadSize = sizeof(NetHead);
 	pHead->nBodySize = nEncryptLen;
-	pHead->nMsgType = ggmtMsg;
-	pHead->nEncryptMethod = ggem3dec;
+	pHead->nBeforeCompressLen = 0;
 	pHead->nBeforeEncryptLen = nDataLen;
-	//memcpy(pData + pHead->nHeadSize, pMsg, nDataLen);
-	/*C3DES des;
-	des.DoDES(pData + pHead->nHeadSize, pBuf, nEncryptLen, m_chSelfEncryptKey, 24, ENCRYPT);
-	{
-		int i = 0;
-		char *pDeBuf = new char[nEncryptLen];
-		C3DES des;
-		des.DoDES(pDeBuf, pData + pHead->nHeadSize, nEncryptLen, m_chSelfEncryptKey, 24, DECRYPT);
-		if (memcmp(pBuf, pDeBuf, nEncryptLen)) {
-			i++;
-		}
-		delete[] pDeBuf;
-	}*/
+	pHead->nCompressMethod = 0;
+	pHead->nEncryptMethod = ggem3des;
+	pHead->nMsgType = ggmtMsg;
+
+	char key[32] = { 0 };
+	strcpy_s(key, "01234567890123456789");
+// 	std::lock_guard<std::mutex> lk(m);
+// 	C3DES des;
+// 	des.DoDES(pData + pHead->nHeadSize, pBuf, nEncryptLen, key, 32, ENCRYPT);
 
 	memcpy(pData + pHead->nHeadSize, pBuf, nEncryptLen);
 	delete[]pBuf;
@@ -345,10 +344,13 @@ void Channel::OnReceivePacket(const void *pPacket, int nLength)
 			}
 
 			DiagnosisTrace(L"peer key:%s\n", s.c_str());*/
-
+			//std::lock_guard<std::mutex> lk(m);
 			// ½âÃÜ
-			/*C3DES des;
-			des.DoDES(pData, (char *)pPacket + pHead->nHeadSize, pHead->nBodySize, m_chPeerEncryptKey, 24, DECRYPT);*/
+			C3DES des;
+			//des.DoDES(pData, (char *)pPacket + pHead->nHeadSize, pHead->nBodySize, m_chPeerEncryptKey, 32, DECRYPT);
+			/*char key[32] = { 0 };
+			strcpy_s(key, "01234567890123456789");
+			des.DoDES(pData, (char *)pPacket + pHead->nHeadSize, pHead->nBodySize, key, 32, DECRYPT);*/
 			memcpy(pData, (char *)pPacket + pHead->nHeadSize, pHead->nBodySize);
 			m_pChannelMgr->m_fnOnReceiveMsg(m_nServiceID, m_nConnectID, pData, pHead->nBeforeEncryptLen);
 			delete[]pData;
