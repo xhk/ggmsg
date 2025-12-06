@@ -3,69 +3,143 @@
 
 #include "pch.h"
 #include <iostream>
-#include "../ggmsg/ChannelMgr.h"
+#include "../ggmsg/ChannelNode.h"
 #include <tchar.h>
 #include <thread>
+#include <time.h>
 
-int OnPositiveConnect(int nServiceID, int nConnectID)
-{
-	std::cout << "OnPositiveConnect " << nServiceID << " " << nConnectID <<"\n";
-	return 0;
-}
+class MyChannelListener : public ChannelListener {
+public:
+	virtual void OnPositiveConnect(int nServiceID, int nConnectID)
+	{
+		std::cout << "OnPositiveConnect " << nServiceID << " " << nConnectID << "\n";
 
-int OnPositiveDisConnect(int nServiceID, int nConnectID)
-{
-	std::cout << "OnPositiveDisConnect " << nServiceID << " " << nConnectID << "\n";
-	return 0;
-}
+	}
+
+	virtual void OnPositiveDisConnect(int nServiceID, int nConnectID)
+	{
+		std::cout << "OnPositiveDisConnect " << nServiceID << " " << nConnectID << "\n";
+	
+	}
 
 
 
-// 被动连接通知
-// nSeviceID 发起连接的服务ID
-int OnPassiveConnect(int nSeviceID, int nConnectID)
-{
-	std::cout << "OnPassiveConnect " << nSeviceID << " " << nConnectID << "\n";
-	return 0;
-}
-
-int OnPassiveDisConnect(int nSeviceID, int nConnectID)
-{
-	std::cout << "OnPassiveDisConnect " << nSeviceID << " " << nConnectID << "\n";
-	return 0;
-}
-
-int OnReceiveMsg(int nServiceID, int nConnectID, const void *pMsg, int nMsgLen)
-{
-	std::cout << "from Service:" << nServiceID << " ConnectID:" << nConnectID << ", msg content:" << (char*)pMsg << "\n";
-	return 0;
-}
-
-int main(int argc, TCHAR *argv[])
-{
-	int nServiceID = _ttoi(argv[1]);
-	short sPort = _ttoi(argv[2]);
-    std::cout << "Hello World!\n"; 
-	ChannelMgr node;
-	node.Start(nServiceID, sPort, OnPassiveConnect, OnPassiveDisConnect, OnReceiveMsg);
-
-	if (argc > 3) {
-		std::string host = argv[3];
-		short port = _ttoi(argv[4]);
+	// 被动连接通知
+	// nSeviceID 发起连接的服务ID
+	virtual void OnPassiveConnect(int nSeviceID, int nConnectID)
+	{
+		std::cout << "OnPassiveConnect " << nSeviceID << " " << nConnectID << "\n";
 		
-		node.Connect(host, port, OnPositiveConnect, OnPositiveDisConnect, OnReceiveMsg);
+	}
+
+	virtual void OnPassiveDisConnect(int nSeviceID, int nConnectID)
+	{
+		std::cout << "OnPassiveDisConnect " << nSeviceID << " " << nConnectID << "\n";
+	
+	}
+
+	virtual void OnReceiveMsg(int nServiceID, int nConnectID, const void* pMsg, int nMsgLen)
+	{
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+		std::cout << "from Service:" << nServiceID << " ConnectID:" << nConnectID << ", msg content:" << (char*)pMsg << "\n";
+		
+	}
+
+};
+
+enum Mode {
+	Positive,
+	Passive
+};
+
+void test_basic(Mode mode, int serviceId, std::string host, short port) {
+	int nServiceID = serviceId;
+	short sPort = port;
+	std::cout << "test_basic!\n";
+	MyChannelListener listener;
+
+	ChannelNode* node = ChannelNode::Create(&listener);
+	if (mode == Mode::Passive) {
+		node->Start(nServiceID, sPort);
 		char buf[32] = { 0 };
-		getchar();
-		for (int i=0;i<1000;++i)
+		for (int i = 0; i < 1000; ++i)
+		{
+			std::this_thread::sleep_for(std::chrono::seconds(1));
+			sprintf_s(buf, "push msg %d", i + 1);
+			node->SendToConnect(1, buf, strlen(buf) + 1);
+		}
+	}else {
+		node->Connect(host.c_str(), port);
+		char buf[32] = { 0 };
+		// wait for connect
+		std::this_thread::sleep_for(std::chrono::seconds(5));
+		for (int i = 0; i < 1000; ++i)
 		{
 			std::this_thread::sleep_for(std::chrono::seconds(1));
 			sprintf_s(buf, "msg %d", i + 1);
-			node.SendToAllService(buf, strlen(buf) + 1);
+			node->SendToAllService(buf, strlen(buf) + 1);
 		}
 	}
 
 	getchar();
-	node.Stop();
+	node->Stop();
+	ChannelNode::Destory(node);
+}
+
+
+void test_pub(Mode mode, int serviceId, std::string host, short port) {
+	
+	if (mode == Mode::Passive) {
+		ChannelListener listener;
+
+		ChannelNode* node = ChannelNode::Create(&listener);
+		node->Start(serviceId, port);
+		std::this_thread::sleep_for(std::chrono::seconds(5));
+		const int buf_size = 1024;
+		char *buf = new char[buf_size];
+		memset(buf, 'A', buf_size);
+		// wait for client connect
+		std::this_thread::sleep_for(std::chrono::seconds(10));
+		std::cout << "start send\n";
+		clock_t start = clock();
+		for (int i = 0; i < 100*10000; ++i)
+		{
+			node->SendToConnect(1, buf, buf_size);
+		}
+		clock_t end = clock();
+		std::cout << "send finish!\n";
+		double duration = (double)(end - start) / CLOCKS_PER_SEC;
+		std::cout << "total time:" << duration << "s\n";
+		delete[]buf;
+	}
+	else {
+		ChannelListener listener;
+
+		ChannelNode* node = ChannelNode::Create(&listener);
+		node->Connect(host.c_str(), port);
+		
+	}
+	getchar();
+}
+
+
+int main(int argc, TCHAR *argv[])
+{
+	std::string strTestCase = argv[1];
+	std::string strMode = argv[2];
+	auto serviceId = atoi(argv[3]);
+	auto host = argv[4];
+	auto port = (short)atoi(argv[5]);
+	Mode mode = Mode::Positive;
+	if (strMode =="passive") {
+		mode = Mode::Passive;
+	}
+
+	if (strTestCase == "basic") {
+		test_basic(mode, serviceId, host, port);
+	}else if(strTestCase == "pub") {
+		test_pub(mode, serviceId, host, port);
+	}
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单
