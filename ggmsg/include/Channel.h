@@ -15,12 +15,6 @@
 #include "Timer.h"
 #include "define.h"
 
-#ifdef __GGMSG_LIB__
-#define __ggmsg_interface__ __declspec(dllexport)
-#else
-#define __ggmsg_interface__ __declspec(dllimport)
-
-#endif // __NET_MSG_LIB__
 
 using boost::asio::ip::tcp;
 
