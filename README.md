@@ -22,7 +22,8 @@ ggmsg 采用两端直连模式，类似于nanomsg，没有broker，性能更优�
 - `mkdir build`
 - `cd build`
 - `cmake .. -DCMAKE_TOOLCHAIN_FILE=d:\github.com\vcpkg\scripts\buildsystems\vcpkg.cmake`
-- `cmake --build .`
+- `cmake --build . --config Release`
+- `cmake --install . --config Release --prefix c:/ggmsg`
 
 # java 
 

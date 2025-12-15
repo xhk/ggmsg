@@ -1,0 +1,8 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/ggmsgTargets.cmake")
+
+set(ggmsg_INCLUDE_DIRS "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_INCLUDEDIR@")
+set(ggmsg_LIBRARIES ggmsg::ggmsg)
+
+check_required_components(ggmsg)

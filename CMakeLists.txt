@@ -1,5 +1,5 @@
 # 指定最低版本
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.25)
 
 
 # 指定项目名称

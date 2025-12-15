@@ -49,3 +49,53 @@ add_library(ggmsg SHARED
 
 # 目标文件链接的库
 #target_link_libraries(ggmsg )
+
+# 安装配置
+include(GNUInstallDirs)
+
+# 安装头文件
+install(
+    DIRECTORY include/ 
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ggmsg
+    FILES_MATCHING PATTERN "*.h"
+)
+
+# 安装库文件
+install(
+    TARGETS ggmsg
+    EXPORT ggmsgTargets
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# 导出CMake配置文件
+install(
+    EXPORT ggmsgTargets
+    FILE ggmsgTargets.cmake
+    NAMESPACE ggmsg::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ggmsg
+)
+
+# 生成并安装包配置文件
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_LIST_DIR}/Config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/ggmsgConfig.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ggmsg
+)
+
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/ggmsgConfigVersion.cmake"
+    VERSION 1.0.0
+    COMPATIBILITY SameMajorVersion
+)
+
+install(
+    FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/ggmsgConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/ggmsgConfigVersion.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ggmsg
+)
