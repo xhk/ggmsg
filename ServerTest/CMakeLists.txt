@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 # 指定项目名称
-project(ggmsgTest)
+project(ServerTest)
 
 # 为当前路径以及子目录的源文件加入由-D预编译定义
 # add_definitions(-DFOO -DDEBUG ...)

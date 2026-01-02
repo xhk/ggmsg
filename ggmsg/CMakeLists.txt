@@ -23,6 +23,9 @@ message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
 # Boost.Asio是头文件库，不需要单独的组件
 message(STATUS "Boost.Asio will be used from headers")
 
+
+
+
 # 头文件查找目录
 include_directories(
     ${Boost_INCLUDE_DIRS}
@@ -49,6 +52,10 @@ add_library(ggmsg SHARED
 
 # 目标文件链接的库
 #target_link_libraries(ggmsg )
+
+if(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE __NET_MSG_LIB__=1 __GGMSG_LIB__)
+endif()
 
 # 安装配置
 include(GNUInstallDirs)

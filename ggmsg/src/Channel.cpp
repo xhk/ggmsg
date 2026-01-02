@@ -1,5 +1,4 @@
-#include "stdafx.h"
-#include "Channel.h"
+﻿#include "Channel.h"
 #include "ChannelMgr.h"
 #include <boost/bind.hpp>
 #include <cstdlib>
@@ -32,15 +31,18 @@ Channel::Channel(ChannelMgr *pChannelMgr, tcp::socket socket, boost::asio::io_co
 
 	m_channalType = (ChannalType)nChannalType;
 	m_nConnectID = ++m_nConnectIDSerial;
-	m_nRecvBufLen = 1024;
+	m_nRecvBufLen = 1024*8;
 	m_pRecvBuf = new char[m_nRecvBufLen];
 	
 	m_strRemoteIp = remote_ip();
 	m_uRemotePort = socket_.remote_endpoint().port();
+
+	std::cout << "Channel::Channel " << m_nConnectID << std::endl;
 }
 
 Channel::~Channel()
 {
+	std::cout << "Channel::~Channel " << m_nConnectID << std::endl;
 	delete[]m_pRecvBuf;
 
 }
@@ -82,7 +84,7 @@ void Channel::Start()
 }
 
 void Channel::PumpHeartBeat() {
-	auto self(shared_from_this());
+	auto self = shared_from_this();
 	m_timerHeartBeat.expires_after(boost::asio::chrono::seconds(30));
 	m_timerHeartBeat.async_wait([self, this](const boost::system::error_code& ec) {
 		if (ec) {
@@ -118,20 +120,22 @@ void Channel::HeartBeat()
 
 	pBody->nServiceID = m_nServiceID;
 
-	SendMsg(pData, nPackageLen);
-	delete[]pData;
+	write(pData, nPackageLen);
+	
 }
 
 void Channel::DoReadHead()
 {
-	auto self(shared_from_this());
-	socket_.async_read_some(boost::asio::buffer(m_pRecvBuf, m_nRecvBufLen),
+	auto self = shared_from_this();
+	auto nHeadSize = sizeof(NetHead);
+	//m_pRecvBuf = new char[2*1024];
+	boost::asio::async_read(socket_,boost::asio::buffer(m_pRecvBuf, nHeadSize),
 		[this, self](boost::system::error_code ec, std::size_t length) {
 		if (!ec) {
+			std::cout << "DoReadHead success:" << length << std::endl;
 			m_nLastActiveTime = std::time(0);
 			NetHead *pHead = (NetHead *)m_pRecvBuf;
 			if (pHead->nHeadSize + pHead->nBodySize > m_nRecvBufLen) {
-				// 	ʱ�佫չ��buf
 				char *pNewBuf = new char[pHead->nHeadSize + pHead->nBodySize];
 				memcpy(pNewBuf, m_pRecvBuf, m_nRecvBufLen);
 				delete[]m_pRecvBuf;
@@ -139,18 +143,17 @@ void Channel::DoReadHead()
 				m_nRecvBufLen = pHead->nHeadSize + pHead->nBodySize;
 			}
 
+			// the package only heave header , not have body
 			if (pHead->nHeadSize + pHead->nBodySize <= length) {
-				//  	һ�δ���
 				OnReceivePacket(m_pRecvBuf, pHead->nHeadSize + pHead->nBodySize);
 				DoReadHead();
 			}
 			else {
-				//  	��������
 				DoReadBody(*pHead);
 			}
 		}
 		else {
-			// 	�ӵ�Ͽ
+			std::cerr << "DoReadHead failed:" << ec.what() << std::endl;
 			do_close();
 		}
 	});
@@ -158,34 +161,30 @@ void Channel::DoReadHead()
 
 void Channel::DoReadBody(const NetHead & head)
 {
-	auto self(shared_from_this());
-	//  	δ���յ���ֽ�� = һ���ĵ�ͷ��Ŀ�� + ��Ŀ - һ���յ���ֽ��
+	auto self = shared_from_this();
 	int nLeftBytes = head.nHeadSize + head.nBodySize - sizeof(NetHead);
-	socket_.async_read_some(boost::asio::buffer(m_pRecvBuf + sizeof(NetHead), nLeftBytes),
+	//m_pRecvBuf = new char[2*1024];
+	boost::asio::async_read(socket_, boost::asio::buffer(m_pRecvBuf + sizeof(NetHead), nLeftBytes),
 		[this, self, head](boost::system::error_code ec, std::size_t length) {
 		if (!ec) {
 			m_nLastActiveTime = std::time(0);
-			if (head.nHeadSize + head.nBodySize <= length + sizeof(NetHead)) {
-				// 	һ�δ���
-				OnReceivePacket(m_pRecvBuf, head.nHeadSize + head.nBodySize);
-				DoReadHead();
-			}
-			else {
-				//  	����δ�յ���, ���˳�����
-				DoReadBody(head);
-			}
+			
+			OnReceivePacket(m_pRecvBuf, head.nHeadSize + head.nBodySize);
+			DoReadHead();
+			
 		}
 		else {
-			// 	�ӵ�Ͽ
 			do_close();
+			std::cerr << ec.what() << std::endl;
 		}
 	});
 }
 
 void Channel::OnReceivePacket(const void *pPacket, int nLength)
 {
-	//std::cout << "OnReceivePacket\n";
 	auto pHead = (NetHead*)(pPacket);
+	std::cout << "OnReceivePacket " << "nMsgType:" << pHead->nMsgType <<"channalType:" << m_channalType << std::endl;
+
 	switch (pHead->nMsgType)
 	{
 	case ggmtShakeHand: {
@@ -202,7 +201,6 @@ void Channel::OnReceivePacket(const void *pPacket, int nLength)
 		break;
 	}
 	case ggmtMsg: {
-		// 	��ӡ���ֽ���:
 		char *pBody = (char*)pPacket + pHead->nHeadSize;
 		m_pChannelMgr->OnReceiveMsg(m_nServiceID, m_nConnectID, pBody, pHead->nBodySize);
 		break;
@@ -240,8 +238,7 @@ void Channel::DoReqShakeHand() {
 	memset(pBody->chDesc, 0, sizeof(pBody->chDesc));
 	strcpy(pBody->chDesc, "connect");
 
-	SendMsg(pData, nPackageLen);
-	delete[]pData;
+	write(pData, nPackageLen);
 }
 
 void Channel::OnRecvShakeHandReq(const void *pPacket, int nLength) {
@@ -276,10 +273,9 @@ void Channel::OnRecvShakeHandReq(const void *pPacket, int nLength) {
 	memset(pBody->chInfo, 0, sizeof(pBody->chInfo));
 	strcpy(pBody->chInfo, "connect ok");
 
-	SendMsg(pData, nPackageLen);
-	delete[]pData;
+	write(pData, nPackageLen);
 
-	// 	���ͻ���Ӧ
+	m_pChannelMgr->AddService(shared_from_this());
 	m_pChannelMgr->OnPassiveConnect(m_nServiceID, m_nConnectID);
 }
 
@@ -289,17 +285,14 @@ void Channel::OnRecvShakeHandRsp(const void *pPacket, int nLength) {
 
 	m_nServiceID = pShakeHandRsp->nServiceID;
 
-	// 	���ͻ���Ӧ
+	m_pChannelMgr->AddService(shared_from_this());
 	m_pChannelMgr->OnPositiveConnect(m_nServiceID, m_nConnectID);
 }
 
 void Channel::write(char *data, std::size_t length) {
-	auto self(shared_from_this());
-	char *pData = new char[length];
-	memcpy(pData, data, length);
-
-	boost::asio::post(*m_pIoContext, [self, pData, length]() {
-		DataEle de = { pData,length };
+	auto self = shared_from_this();
+	boost::asio::post(*m_pIoContext, [self, data, length]() {
+		DataEle de = { data,length };
 		self->m_dataQueue.push(de);
 		self->do_write();
 	});
@@ -310,7 +303,7 @@ void Channel::do_write() {
 		return;
 	}
 
-	auto self(shared_from_this());
+	auto self = shared_from_this();
 
 	m_bSending = true;
 	auto d = m_dataQueue.front();
@@ -319,6 +312,7 @@ void Channel::do_write() {
 	boost::asio::async_write(socket_, boost::asio::buffer(pData, d.nLen),
 		[this, self, pData](boost::system::error_code ec, std::size_t length) {
 		if (!ec) {
+			std::cout << "do_write success:" << length << std::endl;
 			m_nSendBytes += length;
 			m_nSendTimes++;
 
@@ -328,6 +322,7 @@ void Channel::do_write() {
 			}
 		}
 		else {
+			std::cerr << "do_write error:" << ec.what() << std::endl;
 			do_close();
 		}
 		delete[]pData;
@@ -339,18 +334,16 @@ void Channel::SendMsg(const void *pData, size_t nDataLen) {
 		return;
 	}
 
-	// 	���Ƿ��Ѿ���Ͽ
 	if (!socket_.is_open()) {
 		return;
 	}
 
 	auto self(shared_from_this());
 
-	// 	���ͷ+��
 	const int nPackageLen = sizeof(NetHead) + nDataLen;
-	char *pSendData = new char[nPackageLen];
+	char* pSendData = new char[nPackageLen];
 
-	NetHead *pHead = (NetHead*)pSendData;
+	NetHead* pHead = (NetHead*)pSendData;
 	memcpy(pSendData + sizeof(NetHead), pData, nDataLen);
 
 	pHead->nMagic = 0;
@@ -366,5 +359,5 @@ void Channel::SendMsg(const void *pData, size_t nDataLen) {
 		DataEle de = { pSendData,nPackageLen };
 		self->m_dataQueue.push(de);
 		self->do_write();
-	});
+		});
 }

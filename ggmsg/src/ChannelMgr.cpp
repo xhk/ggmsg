@@ -1,5 +1,4 @@
-#include "stdafx.h"
-
+﻿
 #include "ChannelMgr.h"
 #include <boost/bind.hpp>
 #include <cstdlib>
@@ -26,18 +25,16 @@ void ChannelMgr::StartIoThread()
 {
 	io_thread_ = std::thread([this]()
 	{
-		// ѭ���ſ����÷��񲻼��
-		// ����ͻ��˶Ͽ����Ӿ��п�����io_context.run();�ܳ��쳣
 		while (working_) {
-			//try
-			//{
-			m_ioContext.run();
-			//}
-			//catch (std::exception& e)
-			//{
-			//	std::cerr << "Exception: " << e.what() << "\n";
-			//	TRACE("exception: %s\n", e.what());
-			//}
+			try
+			{
+				m_ioContext.run();
+			}
+			catch (std::exception& e)
+			{
+				std::cerr << "Exception: " << e.what() << "\n";
+				//TRACE("exception: %s\n", e.what());
+			}
 		}
 	});
 }
@@ -159,15 +156,12 @@ void ChannelMgr::DoConnect(tcp::socket *pConnectSocket, tcp::resolver::results_t
 		[this, pConnectSocket, pEndPoint, pTimer](boost::system::error_code ec, tcp::endpoint) {
 		if (ec) {
 			std::cerr << ec.message() << "\n";
-			// �ٴ�����
-			// ��Ȼ������ԶԴ�������жϣ��ǿ�������������
 			pTimer->expires_after(boost::asio::chrono::seconds(5));
 			pTimer->async_wait([this, pConnectSocket, pEndPoint, pTimer](const boost::system::error_code& ec) {
 				DoConnect(pConnectSocket, pEndPoint, pTimer);
 			});
 		}
 		else {
-			// ���һ���Ƿ��Ѿ��е��˵�����
 			//{
 			//	auto strHost = pEndPoint->begin()->endpoint().address().to_string();
 			//	auto sPort = pEndPoint->begin()->endpoint().port();
@@ -183,6 +177,7 @@ void ChannelMgr::DoConnect(tcp::socket *pConnectSocket, tcp::resolver::results_t
 						//}
 
 			auto s = std::make_shared<Channel>(this, std::move(*pConnectSocket), &m_ioContext, Channel::positive);
+			s->Start();
 			s->DoReqShakeHand();
 			delete pConnectSocket;
 			delete pEndPoint;
@@ -194,13 +189,11 @@ void ChannelMgr::DoConnect(tcp::socket *pConnectSocket, tcp::resolver::results_t
 void ChannelMgr::AddService(std::shared_ptr<Channel> s) {
 	std::lock_guard<std::mutex> lk(Channels_lock_);
 	Channels_.insert({ s->GetConnectID(), s });
-	// С��0����Ϊ�Ǵ��ͻ���
 	if (s->GetServiceID() >= 0) {
 		m_services.insert({ s->GetServiceID(), s });
 	}
 }
 
-// �Ƴ��Ự
 void ChannelMgr::DeleteService(std::shared_ptr<Channel> s) {
 	{
 		std::lock_guard<std::mutex> lk(Channels_lock_);

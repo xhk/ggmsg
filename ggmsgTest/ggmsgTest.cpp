@@ -3,7 +3,7 @@
 
 #include "pch.h"
 #include <iostream>
-#include "../ggmsg/ChannelNode.h"
+#include "../ggmsg/include/ChannelNode.h"
 #include <tchar.h>
 #include <thread>
 #include <time.h>

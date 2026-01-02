@@ -39,13 +39,13 @@ public:
 	}
 	
 
-	// ��������������
 	void DoReqShakeHand();
 
 
+	// send message
 	void SendMsg(const void *pData, size_t nDataLen);
 
-	void write(char *data, std::size_t length);
+	
 
 	std::string RemoteIp() {
 		return m_strRemoteIp;
@@ -58,7 +58,6 @@ public:
 	unsigned int RecvBytes() { return m_nRecvBytes; }
 	time_t CreateTime() { return m_tCreateTime; }
 
-	// ͨ������
 	enum ChannalType{
 		positive,
 		passive
@@ -69,6 +68,10 @@ private:
 
 	void DoReadHead();
 	void DoReadBody(const NetHead & head);
+
+	// send raw data, zero copy, 
+	// when send completed , the data will be deleted
+	void write(char* data, std::size_t length);
 	void do_write();
 
 	void do_close();
@@ -89,13 +92,13 @@ private:
 	char *m_pRecvBuf;
 	int m_nRecvBufLen;
 
-	time_t m_tCreateTime; // �ػ�����ʱ��
+	time_t m_tCreateTime; 
 
 	unsigned int m_nSendTimes;
 	unsigned int m_nRecvTimes;
 	unsigned int m_nSendBytes;
 	unsigned int m_nRecvBytes;
-	unsigned int m_nLastActiveTime; // �ϴλʱ��
+	unsigned int m_nLastActiveTime; 
 
 	struct DataEle {
 		char *pData;
@@ -116,6 +119,6 @@ private:
 
 	ChannalType m_channalType;
 
-	time_t_timer m_timerHeartBeat; // ��������ʱ��
+	time_t_timer m_timerHeartBeat; 
 	
 };

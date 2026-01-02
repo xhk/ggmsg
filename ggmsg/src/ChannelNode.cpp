@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "ChannelNode.h"
 #include "ChannelMgr.h"
 

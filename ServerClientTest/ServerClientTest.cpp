@@ -8,7 +8,7 @@
 #include <mutex>
 #include <random>
 
-#include "../ggmsg/ggmsg.h"
+#include "../ggmsg/include/ggmsg.h"
 #include "3DES.h"
 
 std::mutex connectIDLock;
@@ -160,23 +160,26 @@ int main(int argc, char *argv[])
 		key[i] = urd(randomGenerator);
 	}
 
+	TestClientServer();
 	//TestFlashClient();
-	const int threadCount = 16;
-	std::thread *threads[threadCount];
-	for (int i=0;i< threadCount;++i)
-	{
-		threads[i] = new std::thread(Test3Des, i);
-	}
+	// const int threadCount = 16;
+	// std::thread *threads[threadCount];
+	// for (int i=0;i< threadCount;++i)
+	// {
+	// 	threads[i] = new std::thread(Test3Des, i);
+	// }
 
-	for (int i = 0; i < threadCount; ++i)
-	{
-		threads[i]->join();
-		for (auto b : results[i]) {
-			if (!b) {
-				std::cout << "False\n";
-			}
-		}
-	}
+	// for (int i = 0; i < threadCount; ++i)
+	// {
+	// 	threads[i]->join();
+	// 	for (auto b : results[i]) {
+	// 		if (!b) {
+	// 			std::cout << "False\n";
+	// 		}
+	// 	}
+	// }
+
+	getchar();
 
 	return 0;
 }

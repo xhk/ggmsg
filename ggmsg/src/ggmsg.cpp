@@ -1,5 +1,4 @@
-﻿#include "stdafx.h"
-
+﻿
 #include "ggmsg.h"
 #include "ChannelMgr.h"
 

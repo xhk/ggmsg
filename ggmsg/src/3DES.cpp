@@ -1,8 +1,9 @@
-// 3DES.cpp : ʵ���ļ�
+﻿// 3DES.cpp : ʵ���ļ�
 //
 
-#include "stdafx.h"
 #include "3DES.h"
+
+#include <memory>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
